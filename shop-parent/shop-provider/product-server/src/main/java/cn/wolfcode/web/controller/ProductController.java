@@ -9,10 +9,9 @@ import cn.wolfcode.web.feign.UserInfoFeignApi;
 import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 @RestController
@@ -24,6 +23,10 @@ public class ProductController {
     @Autowired
     private UserInfoFeignApi userInfoFeignApi;
 
+    @GetMapping("/queryByIdList")
+    public Result<List<Product>> queryByIdList(@RequestParam List<Long> idList) {
+        return Result.success(productService.queryByIdList(idList));
+    }
     @GetMapping("/{id}")
     public Result<Product> getById(@PathVariable Long id) {
         Result<UserInfo> result = userInfoFeignApi.getByPhone(13088889999L);
