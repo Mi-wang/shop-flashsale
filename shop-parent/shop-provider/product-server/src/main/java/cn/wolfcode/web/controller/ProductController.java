@@ -27,15 +27,10 @@ public class ProductController {
     public Result<List<Product>> queryByIdList(@RequestParam List<Long> idList) {
         return Result.success(productService.queryByIdList(idList));
     }
+
     @GetMapping("/{id}")
     public Result<Product> getById(@PathVariable Long id) {
-        Result<UserInfo> result = userInfoFeignApi.getByPhone(13088889999L);
-        String json = JSON.toJSONString(result);
-        if (result.hasError()) {
-            log.error("查询用户信息失败：{}", json);
-            return Result.error(new CodeMsg(result.getCode(), result.getMsg()));
-        }
-        log.info("商品服务查询用户信息：{}", json);
+        log.info("[商品服务] 查询商品信息：{}", id);
         return Result.success(productService.getById(id));
     }
 }

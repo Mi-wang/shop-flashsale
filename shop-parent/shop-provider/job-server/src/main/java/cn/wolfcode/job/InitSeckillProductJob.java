@@ -60,6 +60,11 @@ public class InitSeckillProductJob implements SimpleJob {
         List<SeckillProductVo> list = result.getData();
         log.info("[初始化商品任务] 准备开始初始化 {} 场次商品列表，查询到：size={}",
                 time, list.size());
+        String hashRealKey = JobRedisKey.INIT_SECKILL_PRODUCT_DETAIL_HASH.getRealKey(time + "");
+        for (SeckillProductVo vo : list) {
+            // 存入 Hash 结构
+            redisTemplate.opsForHash().put(hashRealKey, vo.getId() + "", JSON.toJSONString(vo));
+        }
         // 2. 以场次作为唯一 key 把该场次对应的列表数据存入 Redis
         redisTemplate.opsForValue().set(JobRedisKey.INIT_SECKILL_PRODUCT_LIST_STRING.getRealKey(time + ""),
                 JSON.toJSONString(list));

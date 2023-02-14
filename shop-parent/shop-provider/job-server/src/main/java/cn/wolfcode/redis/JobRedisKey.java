@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 @Getter
 public enum JobRedisKey {
     INIT_SECKILL_PRODUCT_LIST_STRING("init:seckill:products:string:"),
+    INIT_SECKILL_PRODUCT_DETAIL_HASH("init:seckill:products:hash:"),
     SECKILL_PRODUCT_LIST("seckillProductList:"),
     SECKILL_STOCK_COUNT_HASH("seckillStockCount:"),
     USER_HASH("userHash"),USER_ZSET("userZset");

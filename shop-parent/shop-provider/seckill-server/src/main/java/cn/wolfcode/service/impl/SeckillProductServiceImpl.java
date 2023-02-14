@@ -97,4 +97,52 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
         }
         return JSON.parseArray(json, SeckillProductVo.class);
     }
+
+    /**
+     * 测试数据：100 线程执行 500 次
+     * 性能测试（QPS）：730/s
+     * 异常比例：1.4
+     */
+    @Override
+    public SeckillProductVo findById(Long seckillId) {
+        SeckillProduct sp = seckillProductMapper.selectById(seckillId);
+        log.info("[秒杀商品] 查询秒杀商品对象：{}", seckillId);
+        // 查询秒杀商品对应的商品对象
+        Result<Product> productResult = productFeignApi.getById(sp.getProductId());
+        if (productResult.hasError()) {
+            log.error("[秒杀商品] 查询商品服务失败，参数：{}，返回：{}", sp.getProductId(), productResult);
+            throw new BusinessException(new CodeMsg(productResult.getCode(), productResult.getMsg()));
+        }
+        Product product = productResult.getData();
+        // 将商品对象的信息拷贝到 vo 中
+        SeckillProductVo vo = new SeckillProductVo();
+        BeanUtils.copyProperties(product, vo);
+        BeanUtils.copyProperties(sp, vo);
+        return vo;
+    }
+
+
+    /**
+     * 测试数据：100 线程执行 500 次
+     * 性能测试（QPS）：3082/s
+     * 异常比例：0
+     */
+    @Override
+    public SeckillProductVo findByIdInCache(Long seckillId, Integer time) {
+        // 从 redis 中查询秒杀商品数据
+        String realKey = SeckillRedisKey.INIT_SECKILL_PRODUCT_DETAIL_HASH.getRealKey(time + "");
+        log.info("[秒杀商品] 查询秒杀商品详情：time={}, seckillId={}", time, seckillId);
+        String json = (String) redisTemplate.opsForHash().get(realKey, seckillId + "");
+        if (StringUtils.isEmpty(json)) {
+            // 如果 redis 查不到数据，就从数据库查询
+            SeckillProductVo vo = findById(seckillId);
+            if (vo != null) {
+                log.info("[秒杀商品] redis 数据不存在，查询数据库：seckillId={}", seckillId);
+                // 存入 redis
+                redisTemplate.opsForHash().put(realKey, seckillId + "", JSON.toJSONString(vo));
+                return vo;
+            }
+        }
+        return JSON.parseObject(json, SeckillProductVo.class);
+    }
 }

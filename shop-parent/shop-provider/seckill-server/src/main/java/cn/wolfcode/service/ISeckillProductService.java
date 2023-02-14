@@ -1,6 +1,5 @@
 package cn.wolfcode.service;
 
-import cn.wolfcode.domain.SeckillProduct;
 import cn.wolfcode.domain.SeckillProductVo;
 
 import java.util.List;
@@ -16,4 +15,14 @@ public interface ISeckillProductService {
     List<SeckillProductVo> queryByTime(Integer time);
 
     List<SeckillProductVo> queryByTimeInCache(Integer time);
+
+    /**
+     * 基于秒杀 id 查询秒杀商品对象
+     *
+     * @param seckillId 秒杀 id
+     * @return 返回的秒杀商品对象
+     */
+    SeckillProductVo findById(Long seckillId);
+
+    SeckillProductVo findByIdInCache(Long seckillId, Integer time);
 }
