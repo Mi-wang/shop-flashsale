@@ -8,7 +8,9 @@ import cn.wolfcode.domain.SeckillProduct;
 import cn.wolfcode.domain.SeckillProductVo;
 import cn.wolfcode.feign.ProductFeignApi;
 import cn.wolfcode.mapper.SeckillProductMapper;
+import cn.wolfcode.redis.SeckillRedisKey;
 import cn.wolfcode.service.ISeckillProductService;
+import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.ThreadContext;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
@@ -16,6 +18,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -70,5 +73,28 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
 
             return productVo;
         }).collect(Collectors.toList());
+    }
+
+    /**
+     * 测试报告：
+     * 吞吐量：2660/s
+     */
+    @Override
+    public List<SeckillProductVo> queryByTimeInCache(Integer time) {
+        String realKey = SeckillRedisKey.INIT_SECKILL_PRODUCT_LIST_STRING.getRealKey(time + "");
+        log.info("[秒杀商品] 从 redis 查询数据：key={}", realKey);
+        String json = redisTemplate.opsForValue().get(realKey);
+        if (StringUtils.isEmpty(json)) {
+            // 如果 redis 中数据为空，从数据库中查询
+            List<SeckillProductVo> list = queryByTime(time);
+            if (list != null && list.size() > 0) {
+                log.info("[秒杀商品] redis 秒杀商品列表不存在，查询数据库并存入 redis：size={}", list.size());
+                // 将从数据库中查询出的数据重新存入 redis
+                redisTemplate.opsForValue().set(realKey, JSON.toJSONString(list));
+                // 返回查询结果
+                return list;
+            }
+        }
+        return JSON.parseArray(json, SeckillProductVo.class);
     }
 }

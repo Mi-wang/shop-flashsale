@@ -21,6 +21,6 @@ public class SeckillProductController {
 
     @GetMapping("/queryByTime")
     public Result<List<SeckillProductVo>> queryByTime(Integer time) {
-        return Result.success(seckillProductService.queryByTime(time));
+        return Result.success(seckillProductService.queryByTimeInCache(time));
     }
 }
