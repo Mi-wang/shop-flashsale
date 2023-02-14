@@ -31,18 +31,20 @@ public class CommonFilter implements GlobalFilter {
          * 2.在请求头中添加FEIGN_REQUEST的请求头，值为0，标记请求不是Feign调用，而是客户端调用
          */
         ServerHttpRequest request = exchange.getRequest().mutate().
-                header(CommonConstants.REAL_IP,exchange.getRequest().getRemoteAddress().getHostString()).
-                header(CommonConstants.FEIGN_REQUEST_KEY,CommonConstants.FEIGN_REQUEST_FALSE).
+                // 获取用户真实 ip, 并将 ip 存入请求头, 交给后端微服务
+                        header(CommonConstants.REAL_IP, exchange.getRequest().getRemoteAddress().getHostString()).
+                // 标识当前请求不是 Feign 请求，是用户请求
+                        header(CommonConstants.FEIGN_REQUEST_KEY, CommonConstants.FEIGN_REQUEST_FALSE).
                 build();
-        return chain.filter(exchange.mutate().request(request).build()).then(Mono.fromRunnable(()->{
+        return chain.filter(exchange.mutate().request(request).build()).then(Mono.fromRunnable(() -> {
             /**
              * post拦截逻辑
              * 在请求执行完微服务之后,需要刷新token在redis的时间
              * 判断token不为空 && Redis还存在这个token对于的key,这时候需要延长Redis中对应key的有效时间.
              */
-            String token,redisKey;
-            if(!StringUtils.isEmpty(token =exchange.getRequest().getHeaders().getFirst(CommonConstants.TOKEN_NAME))
-                    && redisTemplate.hasKey(redisKey = CommonRedisKey.USER_TOKEN.getRealKey(token))){
+            String token, redisKey;
+            if (!StringUtils.isEmpty(token = exchange.getRequest().getHeaders().getFirst(CommonConstants.TOKEN_NAME))
+                    && redisTemplate.hasKey(redisKey = CommonRedisKey.USER_TOKEN.getRealKey(token))) {
                 redisTemplate.expire(redisKey, CommonRedisKey.USER_TOKEN.getExpireTime(), CommonRedisKey.USER_TOKEN.getUnit());
             }
         }));

@@ -1,10 +1,10 @@
 package cn.wolfcode.service.impl;
 
 import cn.wolfcode.common.domain.UserInfo;
-import cn.wolfcode.domain.UserResponse;
 import cn.wolfcode.common.exception.BusinessException;
 import cn.wolfcode.domain.LoginLog;
 import cn.wolfcode.domain.UserLogin;
+import cn.wolfcode.domain.UserResponse;
 import cn.wolfcode.mapper.UserMapper;
 import cn.wolfcode.mq.MQConstant;
 import cn.wolfcode.redis.CommonRedisKey;
@@ -33,29 +33,31 @@ public class UserServiceImpl implements IUserService {
     private StringRedisTemplate redisTemplate;
     @Autowired
     private RocketMQTemplate rocketMQTemplate;
-    private UserLogin getUser(Long phone){
+
+    private UserLogin getUser(Long phone) {
         UserLogin userLogin;
         String hashKey = UaaRedisKey.USER_HASH.getRealKey("");
         String zSetKey = UaaRedisKey.USER_ZSET.getRealKey("");
         String userKey = String.valueOf(phone);
         String objStr = (String) redisTemplate.opsForHash().get(hashKey, String.valueOf(phone));
-        if(StringUtils.isEmpty(objStr)){
+        if (StringUtils.isEmpty(objStr)) {
             //缓存中并没有，从数据库中查询
             userLogin = userMapper.selectUserLoginByPhone(phone);
             //把用户的登录信息存储到Hash结构中.
-            redisTemplate.opsForHash().put(hashKey,userKey,JSON.toJSONString(userLogin));
+            redisTemplate.opsForHash().put(hashKey, userKey, JSON.toJSONString(userLogin));
             //使用zSet结构,value存用户手机号码，分数为登录时间，在定时器中找出7天前登录的用户，然后再缓存中删除.
             //我们缓存中的只存储7天的用户登录信息(热点用户)
-        }else{
+        } else {
             //缓存中有这个key
-            userLogin = JSON.parseObject(objStr,UserLogin.class);
+            userLogin = JSON.parseObject(objStr, UserLogin.class);
         }
-        redisTemplate.opsForZSet().add(zSetKey,userKey,new Date().getTime());
+        redisTemplate.opsForZSet().add(zSetKey, userKey, new Date().getTime());
         return userLogin;
     }
+
     @Override
     public UserResponse login(Long phone, String password, String ip, String token) {
-         //无论登录成功还是登录失败,都需要进行日志记录
+        //无论登录成功还是登录失败,都需要进行日志记录
         LoginLog loginLog = new LoginLog(phone, ip, new Date());
         //如果token还在有效期之内就不在进行登录操作了.
         UserInfo userInfo = getByToken(token);
@@ -72,7 +74,7 @@ public class UserServiceImpl implements IUserService {
             throw new BusinessException(UAACodeMsg.LOGIN_ERROR);
         }
 
-        if(userInfo == null){
+        if (userInfo == null) {
             //查询
             userInfo = userMapper.selectUserInfoByPhone(phone);
             userInfo.setLoginIp(ip);
@@ -82,24 +84,32 @@ public class UserServiceImpl implements IUserService {
 
         return new UserResponse(token, userInfo);
     }
+
+    @Override
+    public UserInfo getByPhone(Long phone) {
+        return userMapper.selectUserInfoByPhone(phone);
+    }
+
     private String createToken(UserInfo userInfo) {
         //token创建
-        String token = UUID.randomUUID().toString().replace("-","");
+        String token = UUID.randomUUID().toString().replace("-", "");
         //把user对象存储到redis中
         CommonRedisKey redisKey = CommonRedisKey.USER_TOKEN;
-        redisTemplate.opsForValue().set(redisKey.getRealKey(token), JSON.toJSONString(userInfo), redisKey.getExpireTime(),redisKey.getUnit());
+        redisTemplate.opsForValue().set(redisKey.getRealKey(token), JSON.toJSONString(userInfo), redisKey.getExpireTime(), redisKey.getUnit());
         return token;
     }
+
     /**
      * 根据传入的token获取UserInfo对象
+     *
      * @param token
      * @return
      */
-    private UserInfo getByToken(String token){
+    private UserInfo getByToken(String token) {
         String strObj = redisTemplate.opsForValue().get(CommonRedisKey.USER_TOKEN.getRealKey(token));
-        if(StringUtils.isEmpty(strObj)){
+        if (StringUtils.isEmpty(strObj)) {
             return null;
         }
-        return JSON.parseObject(strObj,UserInfo.class);
+        return JSON.parseObject(strObj, UserInfo.class);
     }
 }

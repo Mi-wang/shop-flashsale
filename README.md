@@ -29,7 +29,7 @@
 
 - `rocketmq-config-dev.yaml`:修改成你的RocketMQ的地址
 - `redis-config-dev.yaml`:修改成你的Redis的地址
-- `job-service-dev.yaml`:修改成你的Zookeeper的地址
+- `job-service-dev.yaml`:修改成你的Zookeeper的地址 
 - `nacos-discovery-config-dev.yaml`:修改成你的Nacos的地址
 
 项目中的`bootstrap.yml`的地址都需要修改

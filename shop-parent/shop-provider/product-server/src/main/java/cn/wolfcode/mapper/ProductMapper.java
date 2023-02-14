@@ -13,4 +13,6 @@ public interface ProductMapper {
      * @return
      */
     List<Product> queryProductByIds(@Param("ids") List<Long> ids);
+
+    Product selectById(Long id);
 }

@@ -10,4 +10,5 @@ import java.util.Map;
  */
 public interface IOrderInfoService {
 
+    OrderInfo getById(String id);
 }
