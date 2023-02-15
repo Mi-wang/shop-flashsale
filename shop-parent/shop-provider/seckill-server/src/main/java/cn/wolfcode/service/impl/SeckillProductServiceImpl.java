@@ -100,8 +100,8 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
 
     /**
      * 测试数据：100 线程执行 500 次
-     * 性能测试（QPS）：730/s
-     * 异常比例：1.4
+     * 性能测试（QPS）：500/s
+     * 异常比例：6.3
      */
     @Override
     public SeckillProductVo findById(Long seckillId) {
@@ -124,7 +124,7 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
 
     /**
      * 测试数据：100 线程执行 500 次
-     * 性能测试（QPS）：3082/s
+     * 性能测试（QPS）：1045/s
      * 异常比例：0
      */
     @Override
@@ -144,5 +144,10 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
             }
         }
         return JSON.parseObject(json, SeckillProductVo.class);
+    }
+
+    @Override
+    public void decrStockCount(Long id) {
+        seckillProductMapper.decrStock(id);
     }
 }
