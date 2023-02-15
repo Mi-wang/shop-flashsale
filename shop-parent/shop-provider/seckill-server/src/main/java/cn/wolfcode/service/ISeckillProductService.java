@@ -26,5 +26,5 @@ public interface ISeckillProductService {
 
     SeckillProductVo findByIdInCache(Long seckillId, Integer time);
 
-    void decrStockCount(Long id);
+    int decrStockCount(Long id);
 }

@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 
 @RestController
@@ -58,10 +60,10 @@ public class OrderInfoController {
             throw new BusinessException(SeckillCodeMsg.INVALID_TIME_ERROR);
         }
         // 4. 查询当前用户是否已经下过单
-        OrderInfo orderInfo = orderInfoService.getByUserIdAndSeckillId(userInfo.getPhone(), seckillId);
+        /*OrderInfo orderInfo = orderInfoService.getByUserIdAndSeckillId(userInfo.getPhone(), seckillId);
         if (orderInfo != null) {
             throw new BusinessException(SeckillCodeMsg.REPEAT_SECKILL);
-        }
+        }*/
         // 5. 判断库存是否足够 > 0
         if (vo.getStockCount() <= 0) {
             throw new BusinessException(SeckillCodeMsg.SECKILL_STOCK_OVER);

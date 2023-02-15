@@ -1,5 +1,6 @@
 package cn.wolfcode.service.impl;
 
+import cn.wolfcode.common.exception.BusinessException;
 import cn.wolfcode.common.web.Result;
 import cn.wolfcode.domain.OrderInfo;
 import cn.wolfcode.domain.Product;
@@ -11,12 +12,14 @@ import cn.wolfcode.mapper.RefundLogMapper;
 import cn.wolfcode.service.IOrderInfoService;
 import cn.wolfcode.service.ISeckillProductService;
 import cn.wolfcode.util.IdGenerateUtil;
+import cn.wolfcode.web.msg.SeckillCodeMsg;
 import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 
@@ -51,10 +54,23 @@ public class OrderInfoSeviceImpl implements IOrderInfoService {
         return orderInfoMapper.getByUserIdAndSeckillId(phone, seckillId);
     }
 
+    /**
+     * 测试参数：
+     * 线程：100
+     * 次数：5000
+     * 数据：
+     * TPS：89/s
+     * 异常比例：1.92%
+     */
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public String createOrder(Long userId, SeckillProductVo vo) {
         // 扣除库存
-        seckillProductService.decrStockCount(vo.getId());
+        int row = seckillProductService.decrStockCount(vo.getId());
+        if (row <= 0) {
+            // 乐观锁成功，库存数不足
+            throw new BusinessException(SeckillCodeMsg.SECKILL_STOCK_OVER);
+        }
         // 创建订单对象
         OrderInfo orderInfo = this.create(userId, vo);
         // 保存订单对象
