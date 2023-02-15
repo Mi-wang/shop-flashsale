@@ -148,6 +148,21 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
 
     @Override
     public int decrStockCount(Long id) {
-        return seckillProductMapper.decrStock(id);
+        // 加分布式锁
+        try {
+            Boolean ret = redisTemplate.opsForValue().setIfAbsent("seckill:product:" + id, "wolfcode");
+            if (ret == null || !ret) {
+                return 0;
+            }
+
+            // 再次检查库存是否足够
+            SeckillProduct sp = seckillProductMapper.selectById(id);
+            if (sp.getStockCount() > 0) {
+                return seckillProductMapper.decrStock(id);
+            }
+        } finally {
+            redisTemplate.delete("seckill:product:" + id);
+        }
+        return 0;
     }
 }
