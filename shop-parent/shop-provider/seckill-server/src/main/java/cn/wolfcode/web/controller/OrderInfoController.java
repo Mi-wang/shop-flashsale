@@ -95,7 +95,7 @@ public class OrderInfoController {
             throw new BusinessException(SeckillCodeMsg.SECKILL_STOCK_OVER);
         }
         // 6. 进行下单操作(库存数量 -1, 创建秒杀订单)
-        return Result.success(orderInfoService.createOrder(userInfo.getPhone(), vo));
+        return Result.success(orderInfoService.createOrder(userInfo.getPhone(), seckillId));
     }
 
     private boolean validTime(Date startDate, Integer time) {

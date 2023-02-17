@@ -10,7 +10,7 @@
     <update id="decrStock">
         update t_seckill_product
         set stock_count = stock_count - 1
-        where id = #{seckillId}
+        where id = #{seckillId} and stock_count > 0
     </update>
     <update id="incrStock">
         update t_seckill_product

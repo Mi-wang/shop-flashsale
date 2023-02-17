@@ -2,6 +2,7 @@ package cn.wolfcode.service.impl;
 
 import cn.wolfcode.common.exception.BusinessException;
 import cn.wolfcode.domain.OrderInfo;
+import cn.wolfcode.domain.SeckillProduct;
 import cn.wolfcode.domain.SeckillProductVo;
 import cn.wolfcode.feign.ProductFeignApi;
 import cn.wolfcode.mapper.OrderInfoMapper;
@@ -66,17 +67,23 @@ public class OrderInfoSeviceImpl implements IOrderInfoService {
      */
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public String createOrder(Long userId, SeckillProductVo vo) {
+    public String createOrder(Long userId, Long seckillId) {
         // 创建锁对象
-        RLock lock = redissonClient.getLock("seckill:product:stock:lock:" + vo.getId());
+        RLock lock = redissonClient.getLock("seckill:product:stock:lock:" + seckillId);
+        SeckillProductVo vo = null;
         try {
             // 加锁
             lock.lock(10, TimeUnit.SECONDS);
-            // 扣除库存
-            int row = seckillProductService.decrStockCount(vo.getId());
-            if (row <= 0) {
-                // 乐观锁成功，库存数不足
-                throw new BusinessException(SeckillCodeMsg.SECKILL_STOCK_OVER);
+            // 查询最新的库存情况
+            vo = seckillProductService.findById(seckillId);
+            // 库存大于 0 才扣库存
+            if (vo.getStockCount() > 0) {
+                // 扣除库存
+                int row = seckillProductService.decrStockCount(seckillId);
+                if (row <= 0) {
+                    // 乐观锁成功，库存数不足
+                    throw new BusinessException(SeckillCodeMsg.SECKILL_STOCK_OVER);
+                }
             }
             // 创建订单对象
             OrderInfo orderInfo = this.create(userId, vo);
@@ -90,7 +97,9 @@ public class OrderInfoSeviceImpl implements IOrderInfoService {
             throw be;
         } catch (Exception e) {
             // 重新同步 redis 库存，设置本地库存售完标识为 false
-            this.rollbackStockCount(vo.getId());
+            if (vo != null && vo.getStockCount() > 0) {
+                this.rollbackStockCount(vo);
+            }
             log.error("[创建订单] 创建订单失败：", e);
 
             // 继续向外抛出异常
@@ -101,13 +110,12 @@ public class OrderInfoSeviceImpl implements IOrderInfoService {
         }
     }
 
-    private void rollbackStockCount(Long id) {
-        SeckillProductVo vo = seckillProductService.findById(id);
+    private void rollbackStockCount(SeckillProduct sp) {
         // redis 库存回补
-        redisTemplate.opsForHash().put(SeckillRedisKey.SECKILL_STOCK_COUNT_HASH.getRealKey(vo.getTime() + ""),
-                id + "", vo.getStockCount() + "");
+        redisTemplate.opsForHash().put(SeckillRedisKey.SECKILL_STOCK_COUNT_HASH.getRealKey(sp.getTime() + ""),
+                sp.getId() + "", sp.getStockCount() + "");
         // 取消本地标识
-        OrderInfoController.LOCAL_STOCK_OVER_FALG_MAP.put(id, false);
+        OrderInfoController.LOCAL_STOCK_OVER_FALG_MAP.put(sp.getId(), false);
         log.warn("[回滚库存] 订单创建失败，回补 redis 库存以及取消本地售完标记");
     }
 

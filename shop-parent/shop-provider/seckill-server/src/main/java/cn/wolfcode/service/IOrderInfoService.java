@@ -16,5 +16,5 @@ public interface IOrderInfoService {
 
      OrderInfo getByUserIdAndSeckillId(Long phone, Long seckillId);
 
-    String createOrder(Long userId, SeckillProductVo vo);
+    String createOrder(Long userId, Long seckillId);
 }

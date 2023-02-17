@@ -178,14 +178,14 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
             lock.lock(10, TimeUnit.SECONDS);
 */
         // 再次检查库存是否足够
-        SeckillProduct sp = seckillProductMapper.selectById(id);
-        if (sp.getStockCount() > 0) {
-            return seckillProductMapper.decrStock(id);
-        }
+//        SeckillProduct sp = seckillProductMapper.selectById(id);
+//        if (sp.getStockCount() > 0) {
+        return seckillProductMapper.decrStock(id);
+//        }
 /*        } finally {
             // 释放锁
             lock.unlock();
         }*/
-        return 0;
+//        return 0;
     }
 }
