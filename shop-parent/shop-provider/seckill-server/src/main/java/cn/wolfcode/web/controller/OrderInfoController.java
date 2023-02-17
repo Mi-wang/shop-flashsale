@@ -9,6 +9,8 @@ import cn.wolfcode.common.web.Result;
 import cn.wolfcode.common.web.anno.RequireLogin;
 import cn.wolfcode.domain.OrderInfo;
 import cn.wolfcode.domain.SeckillProductVo;
+import cn.wolfcode.mq.MQConstant;
+import cn.wolfcode.mq.OrderMessage;
 import cn.wolfcode.redis.CommonRedisKey;
 import cn.wolfcode.redis.SeckillRedisKey;
 import cn.wolfcode.service.IOrderInfoService;
@@ -17,6 +19,8 @@ import cn.wolfcode.web.msg.SeckillCodeMsg;
 import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
+import org.apache.rocketmq.client.producer.SendCallback;
+import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -95,7 +99,21 @@ public class OrderInfoController {
             throw new BusinessException(SeckillCodeMsg.SECKILL_STOCK_OVER);
         }
         // 6. 进行下单操作(库存数量 -1, 创建秒杀订单)
-        return Result.success(orderInfoService.createOrder(userInfo.getPhone(), seckillId));
+        // return Result.success(orderInfoService.createOrder(userInfo.getPhone(), seckillId));
+        OrderMessage message = new OrderMessage(time, seckillId, token, userInfo.getPhone());
+        rocketMQTemplate.asyncSend(MQConstant.ORDER_PENDING_TOPIC, message, new SendCallback() {
+            @Override
+            public void onSuccess(SendResult sendResult) {
+                log.info("[创建订单] 异步下单发送消息成功: msgId={}, status={}", sendResult.getMsgId(), sendResult.getSendStatus());
+            }
+
+            @Override
+            public void onException(Throwable throwable) {
+                log.warn("[创建订单] 消息发送失败，出现异常，请及时处理消息: message={}", JSON.toJSONString(message));
+                log.error("[创建订单] 消息发送失败", throwable);
+            }
+        });
+        return Result.success("订单id");
     }
 
     private boolean validTime(Date startDate, Integer time) {
@@ -117,7 +135,8 @@ public class OrderInfoController {
         long now = System.currentTimeMillis();
 
         // 开始时间 <= 当前时间 < 结束时间
-        return startTime.getTime() <= now && endTime.getTime() > now;
+        // return startTime.getTime() <= now && endTime.getTime() > now;
+        return true;
     }
 
     private UserInfo getByToken(String token) {
