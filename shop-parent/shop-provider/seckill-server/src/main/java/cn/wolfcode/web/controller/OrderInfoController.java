@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -41,6 +42,8 @@ public class OrderInfoController {
     @Autowired
     private IOrderInfoService orderInfoService;
 
+    private final Map<Long, Boolean> LOCAL_STOCK_OVER_FALG_MAP = new ConcurrentHashMap<>();
+
 /*    @GetMapping("/{id}")
     public Result<OrderInfo> getById(@PathVariable String id) {
         return Result.success(orderInfoService.getById(id));
@@ -52,30 +55,41 @@ public class OrderInfoController {
         // 1. 检查用户是否登录，获取登录用户信息
         UserInfo userInfo = this.getByToken(token);
         if (userInfo == null) {
+            log.warn("[秒杀功能] 当前用户未登录：token={}", token);
             throw new BusinessException(CommonCodeMsg.TOKEN_INVALID);
         }
         // 2. 基于秒杀商品 id 查询秒杀商品对象
         SeckillProductVo vo = seckillProductService.findByIdInCache(seckillId, time);
         // 3. 当前时间是否处于秒杀活动时间范围内
         if (!validTime(vo.getStartDate(), vo.getTime())) {
+            log.warn("[秒杀功能] 访问了不在活动范围内的秒杀商品：seckillId={}, startDate={}, time={}", seckillId, vo.getStartDate(), vo.getTime());
             throw new BusinessException(SeckillCodeMsg.INVALID_TIME_ERROR);
         }
+        // 检查本地标识是否已经卖完
+        Boolean flag = LOCAL_STOCK_OVER_FALG_MAP.get(seckillId);
+        if (flag != null && flag) {
+            // 如果有值且为 true，说明已经没有库存了，直接返回没有库存
+            log.warn("[秒杀功能] 本地标识秒杀商品已售完：seckillId={}", seckillId);
+            throw new BusinessException(SeckillCodeMsg.SECKILL_STOCK_OVER);
+        }
         // 4. 查询当前用户是否已经下过单
-        /*OrderInfo orderInfo = orderInfoService.getByUserIdAndSeckillId(userInfo.getPhone(), seckillId);
-        if (orderInfo != null) {
-            throw new BusinessException(SeckillCodeMsg.REPEAT_SECKILL);
-        }*/
-        // 5. 判断库存是否足够 > 0
+//        OrderInfo orderInfo = orderInfoService.getByUserIdAndSeckillId(userInfo.getPhone(), seckillId);
+//        if (orderInfo != null) {
+//            log.warn("[秒杀功能] 当前用户已经下过订单：seckillId={}, userId={}, orderNo={}", seckillId, userInfo.getPhone(), orderInfo.getOrderNo());
+//            throw new BusinessException(SeckillCodeMsg.REPEAT_SECKILL);
+//        }
         // 5. 库存预减，判断库存是否足够 库存 < 0 === 库存不足
         Long remainStockCount = redisTemplate.opsForHash().increment(SeckillRedisKey.SECKILL_STOCK_COUNT_HASH.getRealKey(time + ""),
                 seckillId + "", -1);
         if (remainStockCount < 0) {
+            log.warn("[秒杀功能] Redis 库存预减库存不足：seckillId={}, remainStockCount={}", seckillId, remainStockCount);
+            // 标识该秒杀商品已经卖完了
+            LOCAL_STOCK_OVER_FALG_MAP.put(seckillId, true);
             throw new BusinessException(SeckillCodeMsg.SECKILL_STOCK_OVER);
         }
         // 6. 进行下单操作(库存数量 -1, 创建秒杀订单)
         return Result.success(orderInfoService.createOrder(userInfo.getPhone(), vo));
     }
-
 
     private boolean validTime(Date startDate, Integer time) {
         Calendar calendar = Calendar.getInstance();
@@ -83,27 +97,28 @@ public class OrderInfoController {
         calendar.setTime(startDate);
         // 设置当前场次的小时数
         calendar.set(Calendar.HOUR_OF_DAY, time);
-        // 分钟
+        // 分/秒清零
         calendar.set(Calendar.MINUTE, 0);
-        // 秒
         calendar.set(Calendar.SECOND, 0);
-
+        // 开始时间
         Date startTime = calendar.getTime();
+        // 基于开始时间 +1小时 == 结束时间
         calendar.add(Calendar.HOUR_OF_DAY, 1);
-
-        Date endtime = calendar.getTime();
-
+        // 结束时间
+        Date endTime = calendar.getTime();
+        // 当前时间进行判断
         long now = System.currentTimeMillis();
-        return true;
-        /*return startTime.getTime() <= now && endtime.getTime() > now;*/
+
+        // 开始时间 <= 当前时间 < 结束时间
+        return startTime.getTime() <= now && endTime.getTime() > now;
     }
 
     private UserInfo getByToken(String token) {
-        String strObj = redisTemplate.opsForValue().get(CommonRedisKey.USER_TOKEN.getRealKey(token));
-        if (StringUtils.isEmpty(strObj)) {
+        String json = redisTemplate.opsForValue().get(CommonRedisKey.USER_TOKEN.getRealKey(token));
+        if (StringUtils.isEmpty(json)) {
             return null;
         }
-        return JSON.parseObject(strObj, UserInfo.class);
+        return JSON.parseObject(json, UserInfo.class);
     }
 
     @GetMapping("/find")
