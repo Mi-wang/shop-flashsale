@@ -10,6 +10,7 @@ import cn.wolfcode.feign.ProductFeignApi;
 import cn.wolfcode.mapper.SeckillProductMapper;
 import cn.wolfcode.redis.SeckillRedisKey;
 import cn.wolfcode.service.ISeckillProductService;
+import cn.wolfcode.util.IdGenerateUtil;
 import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.ThreadContext;
@@ -151,10 +152,12 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
     public int decrStockCount(Long id) {
         String key = "seckill:product:" + id;
         // 加分布式锁
+        String clientId = "";
         try {
             // 由于 SpringRedisTemplate 的 setIfAbsent 同时设置超时时间的重载方法没有使用 setnx 命令，因此也是不是原子性的问题，依然可能设置超时时间失败
             // 完善的解决方案：lua 脚本 =》 Redis 批处理命令
-            Boolean ret = redisTemplate.opsForValue().setIfAbsent(key, "wolfcode", 10, TimeUnit.SECONDS);
+            clientId = IdGenerateUtil.get().nextId() + "";
+            Boolean ret = redisTemplate.opsForValue().setIfAbsent(key, clientId, 10, TimeUnit.SECONDS);
             if (ret == null || !ret) {
                 return 0;
             }
@@ -165,7 +168,11 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
                 return seckillProductMapper.decrStock(id);
             }
         } finally {
-            redisTemplate.delete(key);
+            // 确认是否是自己加的锁
+            if (clientId.equals(redisTemplate.opsForValue().get(key))) {
+                // 只有自己加的锁才可以删除
+                redisTemplate.delete(key);
+            }
         }
         return 0;
     }
