@@ -11,6 +11,7 @@ import cn.wolfcode.domain.OrderInfo;
 import cn.wolfcode.domain.SeckillProductVo;
 import cn.wolfcode.mq.MQConstant;
 import cn.wolfcode.mq.OrderMessage;
+import cn.wolfcode.mq.callback.DefaultSendCallback;
 import cn.wolfcode.redis.CommonRedisKey;
 import cn.wolfcode.redis.SeckillRedisKey;
 import cn.wolfcode.service.IOrderInfoService;
@@ -101,19 +102,8 @@ public class OrderInfoController {
         // 6. 进行下单操作(库存数量 -1, 创建秒杀订单)
         // return Result.success(orderInfoService.createOrder(userInfo.getPhone(), seckillId));
         OrderMessage message = new OrderMessage(time, seckillId, token, userInfo.getPhone());
-        rocketMQTemplate.asyncSend(MQConstant.ORDER_PENDING_TOPIC, message, new SendCallback() {
-            @Override
-            public void onSuccess(SendResult sendResult) {
-                log.info("[创建订单] 异步下单发送消息成功: msgId={}, status={}", sendResult.getMsgId(), sendResult.getSendStatus());
-            }
-
-            @Override
-            public void onException(Throwable throwable) {
-                log.warn("[创建订单] 消息发送失败，出现异常，请及时处理消息: message={}", JSON.toJSONString(message));
-                log.error("[创建订单] 消息发送失败", throwable);
-            }
-        });
-        return Result.success("订单id");
+        rocketMQTemplate.asyncSend(MQConstant.ORDER_PENDING_DEST, message, new DefaultSendCallback("创建订单", message));
+        return Result.success("正在创建订单，请稍后...");
     }
 
     private boolean validTime(Date startDate, Integer time) {
