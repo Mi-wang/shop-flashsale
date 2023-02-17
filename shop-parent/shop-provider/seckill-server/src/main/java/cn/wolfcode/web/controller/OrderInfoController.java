@@ -9,6 +9,7 @@ import cn.wolfcode.common.web.anno.RequireLogin;
 import cn.wolfcode.domain.OrderInfo;
 import cn.wolfcode.domain.SeckillProductVo;
 import cn.wolfcode.redis.CommonRedisKey;
+import cn.wolfcode.redis.SeckillRedisKey;
 import cn.wolfcode.service.IOrderInfoService;
 import cn.wolfcode.service.ISeckillProductService;
 import cn.wolfcode.web.msg.SeckillCodeMsg;
@@ -54,7 +55,7 @@ public class OrderInfoController {
             throw new BusinessException(CommonCodeMsg.TOKEN_INVALID);
         }
         // 2. 基于秒杀商品 id 查询秒杀商品对象
-        SeckillProductVo vo = seckillProductService.findById(seckillId);
+        SeckillProductVo vo = seckillProductService.findByIdInCache(seckillId, time);
         // 3. 当前时间是否处于秒杀活动时间范围内
         if (!validTime(vo.getStartDate(), vo.getTime())) {
             throw new BusinessException(SeckillCodeMsg.INVALID_TIME_ERROR);
@@ -65,7 +66,10 @@ public class OrderInfoController {
             throw new BusinessException(SeckillCodeMsg.REPEAT_SECKILL);
         }*/
         // 5. 判断库存是否足够 > 0
-        if (vo.getStockCount() <= 0) {
+        // 5. 库存预减，判断库存是否足够 库存 < 0 === 库存不足
+        Long remainStockCount = redisTemplate.opsForHash().increment(SeckillRedisKey.SECKILL_STOCK_COUNT_HASH.getRealKey(time + ""),
+                seckillId + "", -1);
+        if (remainStockCount < 0) {
             throw new BusinessException(SeckillCodeMsg.SECKILL_STOCK_OVER);
         }
         // 6. 进行下单操作(库存数量 -1, 创建秒杀订单)

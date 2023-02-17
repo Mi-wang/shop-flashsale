@@ -99,7 +99,11 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
                 return list;
             }
         }
-        return JSON.parseArray(json, SeckillProductVo.class);
+        List<SeckillProductVo> list = JSON.parseArray(json, SeckillProductVo.class);
+        for (SeckillProductVo vo : list) {
+            setStockCount(vo);
+        }
+        return list;
     }
 
     /**
@@ -147,7 +151,20 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
                 return vo;
             }
         }
-        return JSON.parseObject(json, SeckillProductVo.class);
+        SeckillProductVo vo = JSON.parseObject(json, SeckillProductVo.class);
+        // 同步库存
+        setStockCount(vo);
+        return vo;
+    }
+
+    private void setStockCount(SeckillProductVo vo) {
+        // 更新库存
+        String stockCount = (String) redisTemplate.opsForHash().get(SeckillRedisKey.SECKILL_STOCK_COUNT_HASH.getRealKey(vo.getTime() + ""), vo.getId() + "");
+
+        if (StringUtils.hasLength(stockCount)) {
+            int stock = Integer.parseInt(stockCount);
+            vo.setStockCount(Math.max(stock, 0));
+        }
     }
 
     @Autowired
