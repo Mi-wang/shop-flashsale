@@ -23,6 +23,7 @@ import org.springframework.util.StringUtils;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
@@ -148,9 +149,12 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
 
     @Override
     public int decrStockCount(Long id) {
+        String key = "seckill:product:" + id;
         // 加分布式锁
         try {
-            Boolean ret = redisTemplate.opsForValue().setIfAbsent("seckill:product:" + id, "wolfcode");
+            // 由于 SpringRedisTemplate 的 setIfAbsent 同时设置超时时间的重载方法没有使用 setnx 命令，因此也是不是原子性的问题，依然可能设置超时时间失败
+            // 完善的解决方案：lua 脚本 =》 Redis 批处理命令
+            Boolean ret = redisTemplate.opsForValue().setIfAbsent(key, "wolfcode", 10, TimeUnit.SECONDS);
             if (ret == null || !ret) {
                 return 0;
             }
@@ -161,7 +165,7 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
                 return seckillProductMapper.decrStock(id);
             }
         } finally {
-            redisTemplate.delete("seckill:product:" + id);
+            redisTemplate.delete(key);
         }
         return 0;
     }
