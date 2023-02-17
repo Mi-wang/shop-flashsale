@@ -15,6 +15,8 @@ import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.ThreadContext;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -148,19 +150,17 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
         return JSON.parseObject(json, SeckillProductVo.class);
     }
 
+    @Autowired
+    private RedissonClient redissonClient;
+
     @Override
     public int decrStockCount(Long id) {
         String key = "seckill:product:" + id;
-        // 加分布式锁
-        String clientId = "";
+        // 创建锁对象
+        RLock lock = redissonClient.getLock(key);
         try {
-            // 由于 SpringRedisTemplate 的 setIfAbsent 同时设置超时时间的重载方法没有使用 setnx 命令，因此也是不是原子性的问题，依然可能设置超时时间失败
-            // 完善的解决方案：lua 脚本 =》 Redis 批处理命令
-            clientId = IdGenerateUtil.get().nextId() + "";
-            Boolean ret = redisTemplate.opsForValue().setIfAbsent(key, clientId, 10, TimeUnit.SECONDS);
-            if (ret == null || !ret) {
-                return 0;
-            }
+            // 加锁
+            lock.lock(10, TimeUnit.SECONDS);
 
             // 再次检查库存是否足够
             SeckillProduct sp = seckillProductMapper.selectById(id);
@@ -168,11 +168,8 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
                 return seckillProductMapper.decrStock(id);
             }
         } finally {
-            // 确认是否是自己加的锁
-            if (clientId.equals(redisTemplate.opsForValue().get(key))) {
-                // 只有自己加的锁才可以删除
-                redisTemplate.delete(key);
-            }
+            // 释放锁
+            lock.unlock();
         }
         return 0;
     }
