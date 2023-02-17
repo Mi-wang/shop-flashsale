@@ -1,5 +1,6 @@
 package cn.wolfcode.web.controller;
 
+import ch.qos.logback.classic.util.LogbackMDCAdapter;
 import cn.wolfcode.common.constants.CommonConstants;
 import cn.wolfcode.common.domain.UserInfo;
 import cn.wolfcode.common.exception.BusinessException;
@@ -42,7 +43,7 @@ public class OrderInfoController {
     @Autowired
     private IOrderInfoService orderInfoService;
 
-    private final Map<Long, Boolean> LOCAL_STOCK_OVER_FALG_MAP = new ConcurrentHashMap<>();
+    public static final Map<Long, Boolean> LOCAL_STOCK_OVER_FALG_MAP = new ConcurrentHashMap<>();
 
 /*    @GetMapping("/{id}")
     public Result<OrderInfo> getById(@PathVariable String id) {
@@ -73,11 +74,11 @@ public class OrderInfoController {
             throw new BusinessException(SeckillCodeMsg.SECKILL_STOCK_OVER);
         }
         // 4. 查询当前用户是否已经下过单
-//        OrderInfo orderInfo = orderInfoService.getByUserIdAndSeckillId(userInfo.getPhone(), seckillId);
-//        if (orderInfo != null) {
-//            log.warn("[秒杀功能] 当前用户已经下过订单：seckillId={}, userId={}, orderNo={}", seckillId, userInfo.getPhone(), orderInfo.getOrderNo());
-//            throw new BusinessException(SeckillCodeMsg.REPEAT_SECKILL);
-//        }
+        OrderInfo orderInfo = orderInfoService.getByUserIdAndSeckillId(userInfo.getPhone(), seckillId);
+        if (orderInfo != null) {
+            log.warn("[秒杀功能] 当前用户已经下过订单：seckillId={}, userId={}, orderNo={}", seckillId, userInfo.getPhone(), orderInfo.getOrderNo());
+            throw new BusinessException(SeckillCodeMsg.REPEAT_SECKILL);
+        }
         // 5. 库存预减，判断库存是否足够 库存 < 0 === 库存不足
         Long remainStockCount = redisTemplate.opsForHash().increment(SeckillRedisKey.SECKILL_STOCK_COUNT_HASH.getRealKey(time + ""),
                 seckillId + "", -1);

@@ -65,7 +65,7 @@ public class InitSeckillProductJob implements SimpleJob {
             // 存入 Hash 结构
             redisTemplate.opsForHash().put(hashRealKey, vo.getId() + "", JSON.toJSONString(vo));
             // 提前将库存预存入 redis
-            redisTemplate.opsForHash().put(JobRedisKey.SECKILL_STOCK_COUNT_HASH.getRealKey(time + ""), vo.getId(), vo.getStockCount() + "");
+            redisTemplate.opsForHash().put(JobRedisKey.SECKILL_STOCK_COUNT_HASH.getRealKey(time + ""), vo.getId() + "", vo.getStockCount() + "");
         }
         // 2. 以场次作为唯一 key 把该场次对应的列表数据存入 Redis
         redisTemplate.opsForValue().set(JobRedisKey.INIT_SECKILL_PRODUCT_LIST_STRING.getRealKey(time + ""),
