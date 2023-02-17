@@ -73,19 +73,25 @@ public class OrderInfoController {
             log.warn("[秒杀功能] 本地标识秒杀商品已售完：seckillId={}", seckillId);
             throw new BusinessException(SeckillCodeMsg.SECKILL_STOCK_OVER);
         }
-        // 4. 查询当前用户是否已经下过单
-        OrderInfo orderInfo = orderInfoService.getByUserIdAndSeckillId(userInfo.getPhone(), seckillId);
-        if (orderInfo != null) {
-            log.warn("[秒杀功能] 当前用户已经下过订单：seckillId={}, userId={}, orderNo={}", seckillId, userInfo.getPhone(), orderInfo.getOrderNo());
+        // 5. 查询当前用户是否已经下过单
+        // 往redis 利用 setnx 命令直接存储当前用户抢购标识，如果已经存在，就直接提示用户已经下单
+        // 唯一 key：seckill:orders:user:{seckillId}, hashKey={userId}
+        Boolean absent = redisTemplate.opsForHash().putIfAbsent(SeckillRedisKey.SECKILL_ORDER_USER_RECORDS_HASH.getRealKey(seckillId + ""),
+                userInfo.getPhone() + "", "1");
+        if (!absent) {
+            log.warn("[秒杀功能] 当前用户已经下过订单：seckillId={}, userId={}", seckillId, userInfo.getPhone());
             throw new BusinessException(SeckillCodeMsg.REPEAT_SECKILL);
         }
-        // 5. 库存预减，判断库存是否足够 库存 < 0 === 库存不足
+
+        // 4. 库存预减，判断库存是否足够 库存 < 0 === 库存不足
         Long remainStockCount = redisTemplate.opsForHash().increment(SeckillRedisKey.SECKILL_STOCK_COUNT_HASH.getRealKey(time + ""),
                 seckillId + "", -1);
         if (remainStockCount < 0) {
             log.warn("[秒杀功能] Redis 库存预减库存不足：seckillId={}, remainStockCount={}", seckillId, remainStockCount);
             // 标识该秒杀商品已经卖完了
             LOCAL_STOCK_OVER_FALG_MAP.put(seckillId, true);
+            // 删除用户重复下单标记
+            redisTemplate.opsForHash().delete(SeckillRedisKey.SECKILL_ORDER_USER_RECORDS_HASH.getRealKey(seckillId + ""), userInfo.getPhone() + "");
             throw new BusinessException(SeckillCodeMsg.SECKILL_STOCK_OVER);
         }
         // 6. 进行下单操作(库存数量 -1, 创建秒杀订单)
