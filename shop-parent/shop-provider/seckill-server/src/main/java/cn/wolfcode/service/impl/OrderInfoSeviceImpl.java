@@ -105,7 +105,7 @@ public class OrderInfoSeviceImpl implements IOrderInfoService {
         SeckillProductVo vo = seckillProductService.findById(id);
         // redis 库存回补
         redisTemplate.opsForHash().put(SeckillRedisKey.SECKILL_STOCK_COUNT_HASH.getRealKey(vo.getTime() + ""),
-                id + "", vo.getStockCount());
+                id + "", vo.getStockCount() + "");
         // 取消本地标识
         OrderInfoController.LOCAL_STOCK_OVER_FALG_MAP.put(id, false);
         log.warn("[回滚库存] 订单创建失败，回补 redis 库存以及取消本地售完标记");
