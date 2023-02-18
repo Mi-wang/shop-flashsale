@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
  * @date 2023-02-17 017 20:50
  */
 @RocketMQMessageListener(
-        topic = MQConstant.ORDER_PAY_TIMEOUT_TOPIC,
+        topic = MQConstant.ORDER_PENDING_TOPIC,
         selectorExpression = MQConstant.ORDER_PENDING_TAG,
         consumerGroup = MQConstant.ORDER_PENDING_GROUP
 )
