@@ -55,6 +55,10 @@ public class AlipayController {
 
 
             String result = alipayClient.pageExecute(alipayRequest).getBody();
+            System.out.println(result);
+            // result = 支付宝返回的 html 片段
+            // <form action="支付宝的登录页">....
+            // <script>document.forms[0].submit</script>
             return Result.success(result);
         } catch (AlipayApiException e) {
             log.error("[支付宝支付] 参数签名失败，请检查商户私钥以及支付宝公钥配置....", e);
