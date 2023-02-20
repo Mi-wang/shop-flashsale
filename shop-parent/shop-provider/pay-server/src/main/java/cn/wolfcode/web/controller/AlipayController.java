@@ -27,7 +27,7 @@ public class AlipayController {
     @Autowired
     private AlipayProperties alipayProperties;
 
-    @PostMapping("/alipay/prepay")
+    @PostMapping("/prepay")
     public Result prepay(@RequestBody PayVo vo) {
 
         //请求
