@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 
@@ -26,6 +27,22 @@ public class AlipayController {
     private AlipayClient alipayClient;
     @Autowired
     private AlipayProperties alipayProperties;
+
+    @PostMapping("/checkSignature")
+    public Result<Boolean> checkSignature(@RequestBody HashMap<String, String> params) {
+        try {
+            log.info("[支付宝支付] 准备验证签名：{}", params);
+            boolean signVerified = AlipaySignature.rsaCheckV1(params, alipayProperties.getAlipayPublicKey(),
+                    //调用SDK验证签名
+                    alipayProperties.getCharset(), alipayProperties.getSignType());
+            log.info("[支付宝支付] 验证签名完成，验签结果：{}", signVerified);
+
+            return Result.success(signVerified);
+        } catch (AlipayApiException e) {
+            log.error("[支付宝支付] 验证签名失败", e);
+            return Result.success(false);
+        }
+    }
 
     @PostMapping("/prepay")
     public Result prepay(@RequestBody PayVo vo) {

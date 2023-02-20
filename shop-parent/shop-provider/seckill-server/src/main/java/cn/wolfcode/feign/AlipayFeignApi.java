@@ -6,6 +6,8 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import java.util.HashMap;
+
 /**
  * @author wby
  * @version 1.0
@@ -17,4 +19,7 @@ public interface AlipayFeignApi {
 
     @PostMapping("/alipay/prepay")
     Result<String> prepay(@RequestBody PayVo vo);
+
+    @PostMapping("/alipay/checkSignature")
+    Result<Boolean> checkSignature(@RequestBody HashMap<String, String> params);
 }
