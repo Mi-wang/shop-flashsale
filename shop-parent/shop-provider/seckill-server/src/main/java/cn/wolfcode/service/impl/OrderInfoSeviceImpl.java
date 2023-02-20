@@ -8,6 +8,8 @@ import cn.wolfcode.feign.ProductFeignApi;
 import cn.wolfcode.mapper.OrderInfoMapper;
 import cn.wolfcode.mapper.PayLogMapper;
 import cn.wolfcode.mapper.RefundLogMapper;
+import cn.wolfcode.mq.MQConstant;
+import cn.wolfcode.mq.callback.DefaultSendCallback;
 import cn.wolfcode.redis.SeckillRedisKey;
 import cn.wolfcode.service.IOrderInfoService;
 import cn.wolfcode.service.ISeckillProductService;
@@ -15,6 +17,7 @@ import cn.wolfcode.util.IdGenerateUtil;
 import cn.wolfcode.web.controller.OrderInfoController;
 import cn.wolfcode.web.msg.SeckillCodeMsg;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +48,8 @@ public class OrderInfoSeviceImpl implements IOrderInfoService {
     private ProductFeignApi productFeignApi;
     @Autowired
     private RedissonClient redissonClient;
+    @Autowired
+    private RocketMQTemplate rocketMQTemplate;
 
     @Override
     public OrderInfo getById(String id) {
@@ -110,12 +115,28 @@ public class OrderInfoSeviceImpl implements IOrderInfoService {
         }
     }
 
+    @Override
+    public void checkOrderTimeout(String orderNo, Long seckillId) {
+        //  基于订单编号查询订单对象
+        //  检查订单是否已经支付，如果已支付，直接忽略
+        //  修改订单状态为超时取消
+        int row = orderInfoMapper.updateCancelStatus(orderNo, OrderInfo.STATUS_TIMEOUT);
+        if (row > 0) {
+            //  回滚库存（mysql/redis）
+            // +1
+            seckillProductService.incrStockCount(seckillId);
+            SeckillProductVo vo = seckillProductService.findById(seckillId);
+            //  取消库存售完标记（本地标识 JVM） => 分布式缓存同步 => 广播模式
+            rollbackStockCount(vo);
+        }
+    }
+
     private void rollbackStockCount(SeckillProduct sp) {
         // redis 库存回补
         redisTemplate.opsForHash().put(SeckillRedisKey.SECKILL_STOCK_COUNT_HASH.getRealKey(sp.getTime() + ""),
                 sp.getId() + "", sp.getStockCount() + "");
         // 取消本地标识
-        OrderInfoController.LOCAL_STOCK_OVER_FALG_MAP.put(sp.getId(), false);
+        rocketMQTemplate.asyncSend(MQConstant.CANCEL_SECKILL_OVER_SIGN_TOPIC, sp.getId(), new DefaultSendCallback("取消本地标识", sp.getId()));
         log.warn("[回滚库存] 订单创建失败，回补 redis 库存以及取消本地售完标记");
     }
 

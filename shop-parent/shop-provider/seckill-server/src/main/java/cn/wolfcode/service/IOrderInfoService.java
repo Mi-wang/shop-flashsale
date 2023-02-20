@@ -17,4 +17,6 @@ public interface IOrderInfoService {
      OrderInfo getByUserIdAndSeckillId(Long phone, Long seckillId);
 
     String createOrder(Long userId, Long seckillId);
+
+    void checkOrderTimeout(String orderNo, Long seckillId);
 }

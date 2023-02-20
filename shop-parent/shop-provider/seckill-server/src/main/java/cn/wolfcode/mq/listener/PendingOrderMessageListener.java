@@ -12,8 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
-import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
 /**
@@ -48,6 +49,15 @@ public class PendingOrderMessageListener implements RocketMQListener<OrderMessag
 
             // 创建订单结果对象
             result.setOrderNo(orderNo);
+            // 处理超时订单问题
+            // 1. 利用 Java 调度线程池执行一个延迟任务
+            // 2. 利用定时任务每分钟查询超过x分钟未支付的订单
+            // 3. 利用 RocketMQ 的延迟消息，直接发布延迟消息，等到时间后进行消费，检查订单是否已支付
+            // RocketMQ 的延迟级别：1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h
+            // 构建消息对象
+            Message<OrderMQResult> message = MessageBuilder.withPayload(result).build();
+            rocketMQTemplate.asyncSend(MQConstant.ORDER_PAY_TIMEOUT_TOPIC, message,
+                    new DefaultSendCallback("延迟消息", orderNo), 2000, 9);
         } catch (Exception e) {
             log.error("[创建订单监听器] 订单下单失败...", e);
             // 订单创建失败

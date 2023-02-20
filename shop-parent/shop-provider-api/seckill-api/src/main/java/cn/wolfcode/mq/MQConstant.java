@@ -20,5 +20,5 @@ public class MQConstant {
     public static final String ORDER_RESULT_FAIL_TAG = "FAIL";
     public static final String ORDER_RESULT_FAIL_DEST = ORDER_RESULT_TOPIC + ":" + ORDER_RESULT_FAIL_TAG;
     //延迟消息等级
-    public static final int ORDER_PAY_TIMEOUT_DELAY_LEVEL = 13;
+    public static final int ORDER_PAY_TIMEOUT_DELAY_LEVEL = 9;
 }

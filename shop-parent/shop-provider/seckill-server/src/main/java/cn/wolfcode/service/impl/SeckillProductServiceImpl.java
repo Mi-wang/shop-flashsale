@@ -188,4 +188,9 @@ public class SeckillProductServiceImpl implements ISeckillProductService {
         }*/
 //        return 0;
     }
+
+    @Override
+    public void incrStockCount(Long seckillId) {
+        seckillProductMapper.incrStock(seckillId);
+    }
 }
