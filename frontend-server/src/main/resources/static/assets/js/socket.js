@@ -16,12 +16,12 @@ function createScoket(token) {
             var data = $.parseJSON(result.data);
             if (data.orderNo) {
                 layer.confirm("恭喜你，秒杀成功！查看订单？", {btn: ["确定", "取消"]},
-                  function () {
-                      window.location.href = "/order_detail.html?orderNo=" + data.orderNo;
-                  },
-                  function () {
-                      layer.closeAll();
-                  });
+                    function () {
+                        window.location.href = "/order_detail.html?orderNo=" + data.orderNo;
+                    },
+                    function () {
+                        layer.closeAll();
+                    });
             } else {
                 layer.msg(data.msg);
             }
