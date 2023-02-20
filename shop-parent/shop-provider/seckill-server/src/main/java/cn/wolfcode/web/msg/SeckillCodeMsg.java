@@ -8,6 +8,7 @@ public class SeckillCodeMsg extends CodeMsg {
     private SeckillCodeMsg(Integer code, String msg){
         super(code,msg);
     }
+    public static final SeckillCodeMsg ORDER_NOT_EXISTS_ERROR = new SeckillCodeMsg(500301,"参数异常，订单不存在");
     public static final SeckillCodeMsg SECKILL_STOCK_OVER = new SeckillCodeMsg(500201,"您来晚了，商品已经被抢购完毕.");
     public static final SeckillCodeMsg REPEAT_SECKILL = new SeckillCodeMsg(500202,"您已经抢购到商品了，请不要重复抢购");
     public static final SeckillCodeMsg SECKILL_ERROR = new SeckillCodeMsg(500203,"秒杀失败");

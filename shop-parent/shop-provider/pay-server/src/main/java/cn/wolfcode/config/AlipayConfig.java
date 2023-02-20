@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Configuration;
 public class AlipayConfig {
     @Bean
     public AlipayClient alipayClient(AlipayProperties alipayProperties){
-        return new DefaultAlipayClient(alipayProperties.getGatewayUrl(), alipayProperties.getAppId(), alipayProperties.getMerchantPrivateKey(), "json", alipayProperties.getCharset(), alipayProperties.getAlipayPublicKey(), alipayProperties.getSignType());
+        return new DefaultAlipayClient(alipayProperties.getGatewayUrl(),
+                alipayProperties.getAppId(), alipayProperties.getMerchantPrivateKey(),
+                "json", alipayProperties.getCharset(), alipayProperties.getAlipayPublicKey(), alipayProperties.getSignType());
     }
 }
