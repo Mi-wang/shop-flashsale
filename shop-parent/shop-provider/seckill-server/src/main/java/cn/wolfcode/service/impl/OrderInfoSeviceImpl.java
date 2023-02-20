@@ -131,6 +131,11 @@ public class OrderInfoSeviceImpl implements IOrderInfoService {
         }
     }
 
+    @Override
+    public int paySuccess(String orderNo, int payType) {
+        return orderInfoMapper.changePayStatus(orderNo, OrderInfo.STATUS_ACCOUNT_PAID, payType);
+    }
+
     private void rollbackStockCount(SeckillProduct sp) {
         // redis 库存回补
         redisTemplate.opsForHash().put(SeckillRedisKey.SECKILL_STOCK_COUNT_HASH.getRealKey(sp.getTime() + ""),

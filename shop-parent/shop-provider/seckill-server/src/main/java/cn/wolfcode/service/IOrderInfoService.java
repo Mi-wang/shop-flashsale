@@ -19,4 +19,6 @@ public interface IOrderInfoService {
     String createOrder(Long userId, Long seckillId);
 
     void checkOrderTimeout(String orderNo, Long seckillId);
+
+    int paySuccess(String orderNo, int payType);
 }
