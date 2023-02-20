@@ -10,7 +10,6 @@ import cn.wolfcode.feign.AlipayFeignApi;
 import cn.wolfcode.service.IOrderInfoService;
 import cn.wolfcode.web.msg.SeckillCodeMsg;
 import lombok.extern.slf4j.Slf4j;
-import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -19,30 +18,29 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
 
+@Slf4j
 @RestController
 @RequestMapping("/orderPay")
 @RefreshScope
-@Slf4j
 public class OrderPayController {
     @Autowired
     private IOrderInfoService orderInfoService;
     @Autowired
     private AlipayFeignApi alipayFeignApi;
 
-    @Value("{pay.returnUrl}")
+    @Value("${pay.returnUrl}")
     private String returnUrl;
-    @Value("{pay.notifyUrl}")
+    @Value("${pay.notifyUrl}")
     private String notifyUrl;
 
     @GetMapping("/return_url")
     public void returnUrl(@RequestParam HashMap<String, String> params, HttpServletResponse resp) {
-        // HashMap<String, String> params = this.resolveParams(req);
+//        HashMap<String, String> params = this.resolveParams(req);
         log.info("[订单支付] 收到支付宝同步回调请求：{}", params);
 
         // 远程调用支付服务验证签名
@@ -54,11 +52,11 @@ public class OrderPayController {
         try {
             boolean signVerified = result.getData();
             if (signVerified) {
-                // 商户订单号
-                String outTradeNo = params.get("out_trade_no");
+                //商户订单号
+                String out_trade_no = params.get("out_trade_no");
 
                 // 验证签名成功
-                resp.sendRedirect("http://localhost/order_detail.html?orderNo=" + outTradeNo);
+                resp.sendRedirect("http://localhost/order_detail.html?orderNo=" + out_trade_no);
                 return;
             }
 
@@ -67,7 +65,6 @@ public class OrderPayController {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
     private HashMap<String, String> resolveParams(HttpServletRequest request) {
@@ -82,8 +79,8 @@ public class OrderPayController {
                 valueStr = (i == values.length - 1) ? valueStr + values[i]
                         : valueStr + values[i] + ",";
             }
-            // 乱码解决，这段代码在出现乱码时使用
-            // valueStr = new String(valueStr.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
+            //乱码解决，这段代码在出现乱码时使用
+//            valueStr = new String(valueStr.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
             params.put(name, valueStr);
         }
         return params;
@@ -108,7 +105,8 @@ public class OrderPayController {
             3、校验通知中的seller_id（或者seller_email) 是否为out_trade_no这笔单据的对应的操作方（有的时候，一个商户可能有多个seller_id/seller_email）
             4、验证app_id是否为该商户本身。
         */
-        if (signVerified) {//验证成功
+        //验证成功
+        if (signVerified) {
             //商户订单号
             String outTradeNo = params.get("out_trade_no");
             String totalAmount = params.get("total_amount");
@@ -148,15 +146,13 @@ public class OrderPayController {
 
         log.error("[订单支付] 异步回调签名验证失败.....");
         return "fail";
-
     }
-
 
     /**
      * 买家账号：pxgcah2014@sandbox.com
      */
     @GetMapping("/alipay")
-    public Result<String> prepay(String orderNo, Integer type) {
+    public Result<String> prepay(String orderNo) {
         // 查询订单
         OrderInfo orderInfo = orderInfoService.getById(orderNo);
         if (orderInfo == null) {
